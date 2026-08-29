@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "layout-inspector": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--frozen",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "layout-inspector-mcp"
+      ],
+      "env": {}
+    }
+  }
+}

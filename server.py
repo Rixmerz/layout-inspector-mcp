@@ -169,7 +169,7 @@ JS_EXTRACT_LAYOUT = """
     const elements = [];
     const MAX_ELEMENTS = 500;
 
-    function walk(el, depth) {
+    function walk(el, depth, parentIdx) {
         if (elements.length >= MAX_ELEMENTS) return;
         if (el.nodeType !== 1) return;
         const tag = el.tagName.toLowerCase();
@@ -182,7 +182,13 @@ JS_EXTRACT_LAYOUT = """
 
         const style = window.getComputedStyle(el);
 
+        // Index of this element and of its parent, so overlap detection can tell
+        // nesting (a child inside its container) from a real collision.
+        const myIdx = elements.length;
+
         elements.push({
+            index: myIdx,
+            parent: parentIdx,
             selector: getSelector(el),
             tag: tag,
             rect: {
@@ -206,11 +212,11 @@ JS_EXTRACT_LAYOUT = """
         });
 
         for (const child of el.children) {
-            walk(child, depth + 1);
+            walk(child, depth + 1, myIdx);
         }
     }
 
-    walk(root, 0);
+    walk(root, 0, -1);
     return { elements, viewport: vp };
 }
 """
@@ -431,6 +437,23 @@ def detect_layout_issues(
             ))
 
     # Overlap detection (O(n²) pero limitado a MAX_ELEMENTS=500)
+    by_index = {e["index"]: e for e in elements if "index" in e}
+
+    def nested(a: dict, b: dict) -> bool:
+        """True if either element contains the other.
+
+        A child always intersects its container — that is normal nesting, not a
+        collision, and reporting it buries the real findings.
+        """
+        for outer, inner in ((a, b), (b, a)):
+            target = outer.get("index")
+            p = inner.get("parent", -1)
+            while p is not None and p >= 0:
+                if p == target:
+                    return True
+                p = by_index.get(p, {}).get("parent", -1)
+        return False
+
     for i, a in enumerate(visible_elements):
         ra = Rect(a["rect"]["x"], a["rect"]["y"], a["rect"]["w"], a["rect"]["h"])
         # skip tiny elements
@@ -447,21 +470,32 @@ def detect_layout_issues(
             if area < 100:  # ignore tiny overlaps (<100px²)
                 continue
 
+            if nested(a, b):
+                continue
+
             zb = b.get("zIndex", "auto")
-            # siblings with different z-index overlapping = potential issue
-            if a.get("depth") == b.get("depth"):
-                issues.append(LayoutIssue(
-                    type="overlap",
-                    severity="warning",
-                    element=a["selector"],
-                    description=f"Overlaps with {b['selector']} by {area:.0f}px²",
-                    details={
-                        "other": b["selector"],
-                        "overlap_area_px": area,
-                        "z_a": za,
-                        "z_b": zb,
-                    },
-                ))
+            # An explicit z-index means the author stacked these on purpose — a
+            # badge, tooltip, modal or sticky header. Still reported, because the
+            # intent can be wrong, but as info so it does not drown out the
+            # collisions nobody asked for: two elements at z-index auto that
+            # happen to land on top of each other.
+            deliberate = za != "auto" or zb != "auto"
+            issues.append(LayoutIssue(
+                type="overlap",
+                severity="info" if deliberate else "warning",
+                element=a["selector"],
+                description=(
+                    f"Overlaps with {b['selector']} by {area:.0f}px²"
+                    + (" (explicit z-index — likely intentional)" if deliberate else "")
+                ),
+                details={
+                    "other": b["selector"],
+                    "overlap_area_px": area,
+                    "z_a": za,
+                    "z_b": zb,
+                    "deliberate_stacking": deliberate,
+                },
+            ))
 
     return [asdict(i) for i in issues]
 
@@ -614,11 +648,30 @@ async def compare_viewports(
         wait_for: CSS selector to wait for before extracting (optional)
     """
     pairs = []
+    bad = []
     for vp in viewports.split(","):
         vp = vp.strip()
-        if "x" in vp:
-            w, h = vp.split("x")
-            pairs.append((int(w), int(h)))
+        if not vp:
+            continue
+        w, _, h = vp.partition("x")
+        try:
+            w, h = int(w), int(h)
+        except ValueError:
+            bad.append(vp)
+            continue
+        if w <= 0 or h <= 0:
+            bad.append(vp)
+            continue
+        pairs.append((w, h))
+
+    if bad:
+        return json.dumps({
+            "error": f"Invalid viewport(s): {', '.join(bad)}. "
+                     "Expected comma-separated WxH pairs with positive integers, "
+                     "e.g. '375x667,1280x720'."
+        }, indent=2)
+    if not pairs:
+        return json.dumps({"error": "No viewports given."}, indent=2)
 
     results = []
     for w, h in pairs:

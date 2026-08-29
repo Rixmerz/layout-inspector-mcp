@@ -31,7 +31,7 @@ Then run `playwright install chromium` once (see above).
 **First-launch timeout risk:** a cold `uv` cache downloads the Playwright wheel (~45MB) plus its deps before the server reports ready, which can exceed Claude Code's default 30s MCP startup timeout. Warm it once:
 
 ```bash
-uv sync --project ~/.claude/plugins/cache/rixmerz/layout-inspector/0.1.0
+uv sync --project ~/.claude/plugins/cache/rixmerz/layout-inspector/0.2.0
 ```
 
 The cache path uses the **plugin** name (`layout-inspector`), not the repo name.
@@ -62,7 +62,11 @@ Every tool takes a `url` — an `http(s)://` address or a `file://` path.
 
 ## What it detects
 
-- `overlap` — two elements intersect. Siblings with differing z-index are flagged; intersections under 100px² are ignored so legitimate overlays and borders do not drown the signal.
+- `overlap` — two elements intersect and neither contains the other. Severity splits the signal from the noise:
+  - **`warning`** — both sit at `z-index: auto`. Nobody asked for this stacking, so it is probably a bug: an element escaping its container onto a neighbour.
+  - **`info`** — at least one has an explicit z-index, meaning the author stacked them deliberately (badge, tooltip, modal, sticky header). Still reported, because the intent can be wrong, but it will not bury the real findings.
+
+  Nesting is never reported — a child always intersects its container. Intersections under 100px² are ignored so borders and hairline offsets do not drown the signal.
 - `clipped_right` / off-screen — an element extends past the viewport, causing horizontal scroll.
 - `text_truncated` — ellipsis or `nowrap` overflow is cutting text.
 - Touch targets below the WCAG minimum, and interactive elements obscured by another element.

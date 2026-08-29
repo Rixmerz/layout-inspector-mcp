@@ -1,6 +1,6 @@
 [project]
 name = "layout-inspector-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server that inspects rendered web page layouts via headless browser, returning spatial/geometric data for AI agents to reason about positioning, overlaps, and responsive issues."
 requires-python = ">=3.11"
 dependencies = [

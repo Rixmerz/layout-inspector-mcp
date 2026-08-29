@@ -31,7 +31,7 @@ Then run `playwright install chromium` once (see above).
 **First-launch timeout risk:** a cold `uv` cache downloads the Playwright wheel (~45MB) plus its deps before the server reports ready, which can exceed Claude Code's default 30s MCP startup timeout. Warm it once:
 
 ```bash
-uv sync --project ~/.claude/plugins/cache/rixmerz/layout-inspector/0.2.0
+uv sync --project ~/.claude/plugins/cache/rixmerz/layout-inspector/0.2.1
 ```
 
 The cache path uses the **plugin** name (`layout-inspector`), not the repo name.

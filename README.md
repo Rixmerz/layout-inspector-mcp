@@ -31,7 +31,7 @@ Then run `playwright install chromium` once (see above).
 **First-launch timeout risk:** a cold `uv` cache downloads the Playwright wheel (~45MB) plus its deps before the server reports ready, which can exceed Claude Code's default 30s MCP startup timeout. Warm it once:
 
 ```bash
-uv sync --project ~/.claude/plugins/cache/rixmerz/layout-inspector/0.2.1
+uv sync --project ~/.claude/plugins/cache/rixmerz/layout-inspector/0.3.0
 ```
 
 The cache path uses the **plugin** name (`layout-inspector`), not the repo name.
@@ -70,6 +70,24 @@ Every tool takes a `url` — an `http(s)://` address or a `file://` path.
 - `clipped_right` / off-screen — an element extends past the viewport, causing horizontal scroll.
 - `text_truncated` — ellipsis or `nowrap` overflow is cutting text.
 - Touch targets below the WCAG minimum, and interactive elements obscured by another element.
+
+## Skill and subagent
+
+The plugin ships two components beyond the MCP server, both loaded automatically when it is installed.
+
+### Skill: `layout-inspection`
+
+Triggers on layout symptoms — "se superpone", "se corta en mobile", "horizontal scroll", "revisa el layout", or any CSS change that needs verifying. It carries what the raw tool schemas cannot: what each severity actually means, the measurement gotchas (coordinates are viewport-relative at scroll 0, the 500-element cap, the 100px² overlap floor, heuristic selectors), a symptom -> measurement -> usual-cause table, and the diagnose/fix/re-measure loop.
+
+### Subagent: `layout-inspector`
+
+Delegate a whole layout investigation to it and get back findings rather than a JSON dump. It baselines, triages by severity, root-causes every finding with `element_context` before touching CSS, applies the minimal fix, and re-measures at all four breakpoints. It reports in a fixed `FINDING / MEASURED / CAUSE / FIX / VERIFIED` form and will not claim a fix works without the re-measurement that proves it.
+
+```
+> ask the layout-inspector agent why the pricing cards overflow on mobile
+```
+
+**Model and effort: `sonnet` at `effort: high`.** The measurement is deterministic — the browser does it — so the hard part is not raw model capability but the diagnostic loop: hypothesise a cause from a stacking chain, verify it, fix, re-measure, check the other breakpoints. That is what a high effort budget buys, and it buys it more cheaply here than a larger model would. Reasoning over structured geometry and CSS is well within Sonnet's range; open-ended architecture, which would justify Opus, is not what this agent does.
 
 ## Limitations
 

@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --all-groups
+      - name: ruff
+        run: uv run ruff check .
+      - name: ruff format check
+        run: uv run ruff format --check .
+      - name: mypy
+        run: uv run mypy
+
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --all-groups
+      - name: Unit tests (no browser)
+        run: uv run pytest -m "not integration" -q
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --all-groups
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+      - name: Install Chromium
+        # Must run through the project's own environment: a `playwright` binary
+        # from elsewhere installs a build this Playwright will refuse.
+        run: uv run playwright install --with-deps chromium
+      - name: Integration tests
+        run: uv run pytest -m integration -q
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build the wheel
+        run: uv build
+      - name: Install it clean and check the entry point and package data
+        run: |
+          uv venv /tmp/check
+          VIRTUAL_ENV=/tmp/check uv pip install dist/*.whl
+          /tmp/check/bin/python -c "
+          from layout_inspector import scripts, __version__
+          for name in (scripts.EXTRACT_LAYOUT, scripts.ELEMENT_CONTEXT, scripts.ACCESSIBILITY):
+              assert 'liBuildSelector' in scripts.load(name), name
+          print('wheel ok', __version__)
+          "
+          test -x /tmp/check/bin/layout-inspector-mcp
+
+  versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: pyproject, plugin.json and __init__ must agree
+        run: |
+          python - <<'PY'
+          import json, re, pathlib, sys
+          pyproject = re.search(r'^version = "([^"]+)"', pathlib.Path("pyproject.toml").read_text(), re.M).group(1)
+          plugin = json.loads(pathlib.Path(".claude-plugin/plugin.json").read_text())["version"]
+          init = re.search(r'__version__ = "([^"]+)"', pathlib.Path("layout_inspector/__init__.py").read_text()).group(1)
+          print(f"pyproject={pyproject} plugin={plugin} __init__={init}")
+          if len({pyproject, plugin, init}) != 1:
+              sys.exit("version mismatch: the README install path pins the plugin version, so these must match")
+          PY

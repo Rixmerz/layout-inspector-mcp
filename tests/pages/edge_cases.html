@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Layout Inspector edge cases</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+
+  /* Screen-reader-only link: off-screen on purpose, never a defect. */
+  .sr-only { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+  /* Carousel: children overflow a hidden box on purpose. */
+  .carousel { width: 600px; overflow-x: hidden; white-space: nowrap; height: 120px; }
+  .slide { display: inline-block; width: 600px; height: 100px; background: #dde; }
+
+  /* Ellipsis rules on a box the text comfortably fits inside. */
+  .ellipsis-fits { width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Same rules, text genuinely cut off. */
+  .ellipsis-cuts { width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Real collision: an absolute child escapes a zero-height wrapper. */
+  .zero { height: 0; position: relative; }
+  .escapee { position: absolute; top: 0; left: 0; width: 300px; height: 80px; background: pink; }
+  .neighbour { width: 300px; height: 80px; background: lightgreen; }
+
+  /* Trapped z-index: .trap creates a stacking context, so .under can never
+     rise above .over despite its higher z-index. */
+  .stack { position: relative; height: 120px; }
+  .trap { position: absolute; top: 0; left: 0; transform: translateZ(0); }
+  .under { position: relative; z-index: 999; width: 260px; height: 100px; background: #cfc; }
+  .over { position: absolute; top: 0; left: 0; z-index: 1; width: 260px; height: 100px; background: #333; color: #fff; }
+
+  /* Tailwind-style class names that must survive selector escaping. */
+  .md\:flex { display: block; }
+
+  /* Touch targets. */
+  .pair { display: flex; gap: 0; }
+  .tiny { width: 18px; height: 18px; }
+  .spaced { width: 18px; height: 18px; margin: 60px; }
+  .ok-target { width: 48px; height: 48px; }
+
+  /* Genuinely too wide: widens the document. */
+  .too-wide { width: 1500px; height: 60px; background: lightblue; }
+</style>
+</head>
+<body>
+  <a class="sr-only" href="#main">Skip to content</a>
+
+  <div class="md:flex w-1/2">Tailwind-style class names</div>
+
+  <div class="carousel"><div class="slide">1</div><div class="slide">2</div><div class="slide">3</div></div>
+
+  <p class="ellipsis-fits">short</p>
+  <p class="ellipsis-cuts">this label is far too long for its box and really is cut off</p>
+
+  <div class="zero"><div class="escapee">escapee</div></div>
+  <div class="neighbour">neighbour</div>
+
+  <div class="stack">
+    <div class="trap"><div class="under">z-index 999, trapped</div></div>
+    <div class="over">z-index 1, paints on top</div>
+  </div>
+
+  <div class="too-wide">1500px wide, widens the document</div>
+
+  <p>A paragraph with an <a href="#inline">inline link</a> inside a sentence.</p>
+  <div class="pair"><button class="tiny" type="button">a</button><button class="tiny" type="button">b</button></div>
+  <button class="spaced" type="button">y</button>
+  <button class="ok-target" type="button">ok</button>
+  <button class="tiny" type="button" disabled>d</button>
+</body>
+</html>

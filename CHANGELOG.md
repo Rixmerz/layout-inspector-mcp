@@ -3,6 +3,17 @@
 All notable changes to this project are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.5.0]
+
+### Added — layout-inspector tells cauce how to use it
+
+- `.claude-plugin/plugin.json` carries a `cauce` block (format 1): what each
+  tool is for, the line a cauce worker gets, and what each tool measures for
+  cauce's independent check. cauce reads it from the installed plugin when it
+  plans a task, so a layout-inspector update changes what its workers are told
+  with no cauce release. Words only: when a worker gets the server stays in
+  cauce. Claude Code ignores the key (`claude plugin validate` warns about it).
+
 ## [0.4.0]
 
 A correctness release. Every detector produced false positives or false

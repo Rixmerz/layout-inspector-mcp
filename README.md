@@ -58,6 +58,7 @@ Every tool takes a `url` — an `http(s)://` address or a `file://` path.
 | `element_context` | Deep dive on one element: computed styles, parent layout, siblings, the stacking-context chain and every clipping ancestor. |
 | `compare_viewports` | Same page across breakpoints, with the findings **diffed** so responsive regressions are named rather than left for you to spot. |
 | `accessibility_spatial` | WCAG 2.2 target sizes and interactive elements covered by something else. |
+| `check_design_system` | The rendered page against its design system: colors, font sizes, radii and spacing that no token (read from the page's CSS custom properties, optionally by prefix) or brand-overlay value defines, and text contrast measured on the real render. |
 | `check_environment` | Whether the browser this server needs is installed, and how to install it. |
 
 Shared arguments: `viewport_width`, `viewport_height`, `root_selector` (scope to a subtree — errors if it matches nothing), `wait_for` (block on a selector for late content), `wait_until` (`networkidle`, `load`, `domcontentloaded`, `commit`), `timeout_ms`, `full_page` (scroll once to trigger lazy loading), `scroll_y` (measure at an offset, for sticky behaviour), and `mobile` (full phone emulation, opt-in).

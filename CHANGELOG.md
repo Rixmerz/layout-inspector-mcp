@@ -3,6 +3,21 @@
 All notable changes to this project are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.6.0]
+
+### Added — check against the design system
+
+- `check_design_system`: reads the design system's tokens from the page
+  itself (the CSS custom properties its stylesheets define, optionally only
+  those with a prefix such as `--cds-` or `--md-sys-`), adds the values a
+  brand overlay passes in `extra_tokens`, and reports every computed text
+  color, background, border color, font size, corner radius and spacing no
+  token resolves to (warnings, with the selectors that use it). Text
+  contrast is measured on the real render against the painted background,
+  WCAG 1.4.3 (errors); text over an image or gradient is counted as not
+  measured, never passed.
+- The plugin manifest names the tool for cauce and locks.
+
 ## [0.5.0]
 
 ### Added — layout-inspector tells cauce how to use it

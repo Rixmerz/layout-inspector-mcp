@@ -1,6 +1,6 @@
 ---
 name: layout-inspection
-description: Diagnose and fix rendered web layout defects by measuring geometry with the layout-inspector MCP server (detect_issues, inspect_layout, element_context, compare_viewports, accessibility_spatial, check_environment). Use whenever someone reports that a page looks broken, overlapping, cut off, misaligned, squashed on mobile, horizontally scrolling, or clipped — and whenever a CSS/layout change needs verification that it did not break another breakpoint. Also use for touch-target and covered-control accessibility checks, and for auditing a page before shipping. Trigger even when the user only says "se ve mal", "se superpone", "se corta el texto", "no se ve en mobile", "revisa el layout", or pastes a screenshot of a broken UI — the point of this skill is to replace eyeballing pixels with measured geometry.
+description: Diagnose and fix rendered web layout defects by measuring geometry with the layout-inspector MCP server (detect_issues, inspect_layout, element_context, compare_viewports, accessibility_spatial, check_design_system, check_environment). Use whenever someone reports that a page looks broken, overlapping, cut off, misaligned, squashed on mobile, horizontally scrolling, or clipped — and whenever a CSS/layout change needs verification that it did not break another breakpoint. Also use for touch-target and covered-control accessibility checks, and for auditing a page before shipping. Trigger even when the user only says "se ve mal", "se superpone", "se corta el texto", "no se ve en mobile", "revisa el layout", or pastes a screenshot of a broken UI — the point of this skill is to replace eyeballing pixels with measured geometry.
 ---
 
 # Layout Inspection
@@ -20,6 +20,7 @@ All take `url` (an `http(s)://` address or a `file://` path).
 | `element_context` | Root cause for one element: computed styles, parent box, siblings, the stacking-context chain and every clipping ancestor. |
 | `compare_viewports` | Responsive regressions, already diffed. Default `375x667,768x1024,1280x720,1920x1080`. |
 | `accessibility_spatial` | WCAG 2.2 target sizes and covered controls. |
+| `check_design_system` | Values outside the design system's tokens and its overlay; real text contrast. |
 | `check_environment` | Call this when a tool fails to launch a browser, before concluding anything else. |
 
 Shared arguments: `viewport_width`/`viewport_height` (default `1280x720`),
@@ -163,3 +164,20 @@ Do not report a raw issue dump as a diagnosis, do not call `info` findings bugs
 without arguing intent, and do not claim a fix works without the re-measurement
 that proves it. When geometry is correct but the design intent is unclear, say
 what the numbers show and ask — the tool quantifies, the human judges.
+
+## Checking against a design system
+
+When the project is built on a documented design system (tracer's
+`docs/tracer/design-system.md` names it), run `check_design_system` with its
+token prefix and the overlay's values:
+
+- `token_prefixes`: the prefix of the system's CSS custom properties
+  (`--cds-` Carbon, `--md-sys-` Material 3, `--color-`/`--space-` for many
+  token packages). Read it from the page's stylesheet, never guess one.
+- `extra_tokens`: every value of the brand overlay table.
+
+Contrast failures are errors: fix them first. An off-token value is either a
+missing overlay row (add it, with its reason, to the overlay) or a hand-made
+style that should use the system's token or component. A note saying no
+tokens were found means the system's tokens are not CSS custom properties on
+this page: pass its values in `extra_tokens` instead.

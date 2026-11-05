@@ -614,6 +614,120 @@ async def accessibility_spatial(
     return _dump(data)
 
 
+def _design_findings(data: dict) -> dict:
+    """Summarise a design-token audit: what breaks the system, by weight."""
+    tokens = data["tokens"]
+    findings: list[dict] = []
+    for item in data["contrast_failures"]:
+        findings.append(
+            {
+                "severity": "error",
+                "kind": "contrast",
+                "detail": f"{item['ratio']}:1 where {item['required']}:1 is required",
+                **item,
+            }
+        )
+    for kind, entries in data["off_token"].items():
+        for entry in entries:
+            findings.append(
+                {
+                    "severity": "warning",
+                    "kind": f"off_token_{kind}",
+                    "detail": f"{entry['value']} is no token of the design system or its overlay",
+                    **entry,
+                }
+            )
+    by_severity = {"error": 0, "warning": 0}
+    for f in findings:
+        by_severity[f["severity"]] += 1
+    notes = []
+    if tokens["colors"] == 0 and tokens["lengths"] == 0:
+        notes.append(
+            "No design tokens were found on the page: its design system defines none as CSS "
+            "custom properties here, or the prefixes matched none. Every value is reported as "
+            "off-token; pass the system's values in extra_tokens."
+        )
+    if tokens["unreadable_stylesheets"]:
+        notes.append(
+            f"{tokens['unreadable_stylesheets']} cross-origin stylesheet(s) could not be read; "
+            "tokens defined only there are missing."
+        )
+    if data["contrast_unknown"]:
+        notes.append(
+            f"{data['contrast_unknown']} text element(s) sit on an image or gradient: their "
+            "contrast was not measured."
+        )
+    return {"by_severity": by_severity, "findings": findings, "notes": notes}
+
+
+@mcp.tool()
+async def check_design_system(
+    url: str,
+    token_prefixes: list[str] | None = None,
+    extra_tokens: list[str] | None = None,
+    viewport_width: int = 1280,
+    viewport_height: int = 720,
+    root_selector: str | None = None,
+    wait_for: str | None = None,
+    wait_until: str = "networkidle",
+    timeout_ms: int = DEFAULT_NAV_TIMEOUT_MS,
+    mobile: bool | None = None,
+) -> str:
+    """Checks the rendered page against the design system it is built on.
+
+    The system's tokens are read from the page itself: every CSS custom
+    property its stylesheets define, or only those starting with one of
+    token_prefixes (e.g. '--cds-' for Carbon, '--md-sys-' for Material 3).
+    Values a brand overlay adds go in extra_tokens ('#6929c4', '12px').
+    Each element's computed text color, background, border color, font
+    size, corner radius and spacing is compared with them: a value no token
+    resolves to is off-token (a warning, with the selectors that use it).
+    Text contrast is measured on the real render against the painted
+    background (WCAG 1.4.3: 4.5:1, 3:1 for large text); a failure is an error.
+
+    Args:
+        url: Page URL or file:// path.
+        token_prefixes: Only custom properties with these prefixes count as the system's tokens.
+        extra_tokens: Colors or lengths the brand overlay adds to the system.
+        viewport_width: Viewport width in CSS px.
+        viewport_height: Viewport height in CSS px.
+        root_selector: CSS selector to scope the audit to a subtree.
+        wait_for: CSS selector to wait for before measuring.
+        wait_until: Navigation wait: 'networkidle', 'load' or 'domcontentloaded'.
+        timeout_ms: Navigation timeout in milliseconds.
+        mobile: Full phone emulation. Off by default.
+    """
+    async with _measure(
+        url,
+        viewport_width=viewport_width,
+        viewport_height=viewport_height,
+        wait_for=wait_for,
+        wait_until=wait_until,
+        timeout_ms=timeout_ms,
+        mobile=mobile,
+    ) as (page, diagnostics):
+        raw = await page.evaluate(
+            scripts.load(scripts.DESIGN_TOKENS),
+            {
+                "selector": root_selector,
+                "prefixes": token_prefixes or [],
+                "extra": extra_tokens or [],
+            },
+        )
+        data = _check_script_result(raw, what="check_design_system")
+
+    payload = {
+        "url": url,
+        "viewport": {"w": viewport_width, "h": viewport_height},
+        "tokens": data["tokens"],
+        "elements_checked": data["elements_checked"],
+        "element_cap_reached": data["element_cap_reached"],
+        **_design_findings(data),
+        "page": diagnostics.to_dict(),
+    }
+    return _dump(payload)
+
+
 def main() -> None:
     logging.basicConfig(
         level=os.environ.get("LAYOUT_INSPECTOR_LOG_LEVEL", "WARNING").upper(),

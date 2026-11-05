@@ -205,3 +205,43 @@ async def test_a_missing_viewport_meta_is_reported_at_phone_widths(browser_pool,
 async def test_a_page_with_a_viewport_meta_is_not_flagged(browser_pool, test_page):
     payload = await issues_for(test_page, viewport_width=375, viewport_height=667)
     assert not [i for i in payload["issues"] if i["type"] == "missing_viewport_meta"]
+
+
+async def design_for(url, **kwargs):
+    return json.loads(await server.check_design_system(url, **kwargs))
+
+
+def values(payload, kind):
+    return {f["value"] for f in payload["findings"] if f["kind"] == kind}
+
+
+async def test_design_system_values_off_its_tokens_are_named(browser_pool, design_page):
+    payload = await design_for(design_page, token_prefixes=["--ds-"])
+    assert payload["tokens"]["colors"] >= 3
+    assert "rgb(255, 106, 0)" in values(payload, "off_token_background")
+    assert "13px" in values(payload, "off_token_spacing")
+    assert "9px" in values(payload, "off_token_radius")
+    # A token outside the prefix is not the system's.
+    assert "rgb(255, 0, 255)" in values(payload, "off_token_color")
+    # On-system values are not reported.
+    assert "rgb(15, 98, 254)" not in values(payload, "off_token_background")
+    assert "32px" not in values(payload, "off_token_font_size")
+    low = [f for f in payload["findings"] if f["kind"] == "contrast"]
+    assert any("Grey" in f["text"] for f in low)
+    assert all(f["severity"] == "error" for f in low)
+
+
+async def test_overlay_values_join_the_system(browser_pool, design_page):
+    payload = await design_for(
+        design_page,
+        token_prefixes=["--ds-"],
+        extra_tokens=["#ff6a00", "13px"],
+    )
+    assert "rgb(255, 106, 0)" not in values(payload, "off_token_background")
+    assert "13px" not in values(payload, "off_token_spacing")
+    assert payload["tokens"]["overlay_values"] == 2
+
+
+async def test_a_page_without_tokens_says_so(browser_pool, test_page):
+    payload = await design_for(test_page, token_prefixes=["--nothing-"])
+    assert any("No design tokens" in n for n in payload["notes"])

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design system fixture</title>
+<style>
+  :root {
+    --ds-color-text: #161616;
+    --ds-color-background: #ffffff;
+    --ds-color-primary: #0f62fe;
+    --ds-color-on-primary: #ffffff;
+    --ds-space-1: 8px;
+    --ds-space-2: 16px;
+    --ds-radius: 4px;
+    --ds-font-body: 16px;
+    --ds-font-heading: 32px;
+    --other-unrelated: #ff00ff;
+  }
+  body { margin: 0; padding: var(--ds-space-2); color: var(--ds-color-text); background: var(--ds-color-background); font-size: var(--ds-font-body); }
+  h1 { margin: 0 0 var(--ds-space-1); font-size: var(--ds-font-heading); }
+  p { margin: 0 0 var(--ds-space-2); }
+  .on-system { background: var(--ds-color-primary); color: var(--ds-color-on-primary); padding: var(--ds-space-1); border-radius: var(--ds-radius); }
+  .off-color { background: #ff6a00; color: #ffffff; padding: var(--ds-space-1); }
+  .off-spacing { padding: 13px; }
+  .off-radius { border-radius: 9px; }
+  .low-contrast { color: #aaaaaa; }
+  .magenta { color: var(--other-unrelated); }
+</style>
+</head>
+<body>
+  <h1>Heading on system</h1>
+  <p>Body text on system.</p>
+  <button class="on-system">Primary</button>
+  <button class="off-color">Hand-made orange</button>
+  <div class="off-spacing">Odd padding</div>
+  <div class="off-radius">Odd radius</div>
+  <p class="low-contrast">Grey that fails contrast</p>
+  <p class="magenta">Magenta from a token outside the prefix</p>
+</body>
+</html>

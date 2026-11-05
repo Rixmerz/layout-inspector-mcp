@@ -26,6 +26,11 @@ def edge_page() -> str:
     return page_url("edge_cases.html")
 
 
+@pytest.fixture(scope="session")
+def design_page() -> str:
+    return page_url("design_system.html")
+
+
 @pytest.fixture
 async def browser_pool():
     """A launched pool, or a skip when no usable Chromium is installed."""

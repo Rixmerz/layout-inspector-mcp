@@ -75,7 +75,7 @@ jobs:
           VIRTUAL_ENV=/tmp/check uv pip install dist/*.whl
           /tmp/check/bin/python -c "
           from layout_inspector import scripts, __version__
-          for name in (scripts.EXTRACT_LAYOUT, scripts.ELEMENT_CONTEXT, scripts.ACCESSIBILITY):
+          for name in (scripts.EXTRACT_LAYOUT, scripts.ELEMENT_CONTEXT, scripts.ACCESSIBILITY, scripts.DESIGN_TOKENS):
               assert 'liBuildSelector' in scripts.load(name), name
           print('wheel ok', __version__)
           "

@@ -29,3 +29,4 @@ def load(name: str) -> str:
 EXTRACT_LAYOUT = "extract_layout.js"
 ELEMENT_CONTEXT = "element_context.js"
 ACCESSIBILITY = "accessibility.js"
+DESIGN_TOKENS = "design_tokens.js"
